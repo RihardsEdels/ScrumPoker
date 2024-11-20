@@ -8,8 +8,8 @@
         "start": "node server.js"
     },
     "dependencies": {
-        "socket.io": "^4.7.2",
-        "node-cron": "^3.0.2"
+        "cron": "^3.2.1",
+        "socket.io": "^4.7.2"
     },
     "engines": {
         "node": ">=18.0.0"

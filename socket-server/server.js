@@ -1,17 +1,9 @@
 import { Server } from 'socket.io';
-import cron from 'node-cron';
 import http from 'http';
+import { job } from './cron.js';
 
 // Create HTTP server
-const httpServer = http.createServer((req, res) => {
-    if (req.url === '/ping') {
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString() }));
-        return;
-    }
-    res.writeHead(404);
-    res.end();
-});
+const httpServer = http.createServer();
 
 const io = new Server(httpServer, {
     cors: {
@@ -146,30 +138,9 @@ io.on("connection", (socket) => {
 
 const PORT = process.env.PORT || 3001;
 
-// Self-ping cron job
-cron.schedule('*/14 * * * *', () => {
-    const options = {
-        hostname: 'scrumpoker-3qox.onrender.com',
-        path: '/ping',
-        method: 'GET',
-    };
-
-    const req = http.request(options, (res) => {
-        let data = '';
-        res.on('data', (chunk) => {
-            data += chunk;
-        });
-        res.on('end', () => {
-            console.log('Server pinged successfully:', data);
-        });
-    });
-
-    req.on('error', (error) => {
-        console.error('Error pinging server:', error.message);
-    });
-
-    req.end();
-});
+// Start the cron job
+job.start();
+console.log('Cron job started');
 
 // Start the server
 httpServer.listen(PORT, () => {
@@ -179,6 +150,7 @@ httpServer.listen(PORT, () => {
 // Handle process termination
 process.on('SIGTERM', () => {
     console.log('SIGTERM received. Closing server...');
+    job.stop();
     httpServer.close(() => {
         console.log('Server closed');
         process.exit(0);
@@ -187,6 +159,7 @@ process.on('SIGTERM', () => {
 
 process.on('SIGINT', () => {
     console.log('SIGINT received. Closing server...');
+    job.stop();
     httpServer.close(() => {
         console.log('Server closed');
         process.exit(0);
