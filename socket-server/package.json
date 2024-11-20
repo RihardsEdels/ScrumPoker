@@ -3,11 +3,13 @@
     "version": "1.0.0",
     "description": "Socket.IO server for Scrum Poker application",
     "main": "server.js",
+    "type": "module",
     "scripts": {
         "start": "node server.js"
     },
     "dependencies": {
-        "socket.io": "^4.7.2"
+        "socket.io": "^4.7.2",
+        "node-cron": "^3.0.2"
     },
     "engines": {
         "node": ">=18.0.0"

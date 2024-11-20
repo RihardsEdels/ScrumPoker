@@ -1,6 +1,19 @@
-const { Server } = require("socket.io");
+import { Server } from 'socket.io';
+import cron from 'node-cron';
+import http from 'http';
 
-const io = new Server({
+// Create HTTP server
+const httpServer = http.createServer((req, res) => {
+    if (req.url === '/ping') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString() }));
+        return;
+    }
+    res.writeHead(404);
+    res.end();
+});
+
+const io = new Server(httpServer, {
     cors: {
         // Allow both local development and production URLs
         origin: [
@@ -133,13 +146,40 @@ io.on("connection", (socket) => {
 
 const PORT = process.env.PORT || 3001;
 
-io.listen(PORT);
-console.log(`Socket.IO server running on port ${PORT}`);
+// Self-ping cron job
+cron.schedule('*/14 * * * *', () => {
+    const options = {
+        hostname: 'scrumpoker-3qox.onrender.com',
+        path: '/ping',
+        method: 'GET',
+    };
+
+    const req = http.request(options, (res) => {
+        let data = '';
+        res.on('data', (chunk) => {
+            data += chunk;
+        });
+        res.on('end', () => {
+            console.log('Server pinged successfully:', data);
+        });
+    });
+
+    req.on('error', (error) => {
+        console.error('Error pinging server:', error.message);
+    });
+
+    req.end();
+});
+
+// Start the server
+httpServer.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});
 
 // Handle process termination
 process.on('SIGTERM', () => {
     console.log('SIGTERM received. Closing server...');
-    io.close(() => {
+    httpServer.close(() => {
         console.log('Server closed');
         process.exit(0);
     });
@@ -147,7 +187,7 @@ process.on('SIGTERM', () => {
 
 process.on('SIGINT', () => {
     console.log('SIGINT received. Closing server...');
-    io.close(() => {
+    httpServer.close(() => {
         console.log('Server closed');
         process.exit(0);
     });
