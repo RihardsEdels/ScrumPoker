@@ -1,36 +1,78 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Scrum Poker
 
-## Getting Started
+A real-time planning poker application for agile teams, built with Next.js and Socket.IO.
 
-First, run the development server:
+## Features
+
+- Create and join planning poker rooms
+- Real-time vote synchronization
+- Spectator mode support
+- Vote distribution and average calculation
+- Responsive design
+- Share room links with team members
+
+## Live Demo
+
+Visit [https://scrum-poker-teal.vercel.app](https://scrum-poker-teal.vercel.app)
+
+## Development Setup
+
+1. Install dependencies:
+
+```bash
+npm install
+```
+
+2. Create a `.env` file:
+
+```bash
+NEXT_PUBLIC_SOCKET_URL=http://localhost:3001
+```
+
+3. Start the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+4. Start the Socket.IO server (in a separate terminal):
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+cd socket-server
+npm install
+npm start
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Deployment
 
-## Learn More
+### Frontend (Vercel)
 
-To learn more about Next.js, take a look at the following resources:
+1. Push your changes to GitHub
+2. Connect your repository to Vercel
+3. Add the production environment variable:
+   - `NEXT_PUBLIC_SOCKET_URL`: Your Socket.IO server URL
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Socket.IO Server (Render)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. Create a new Web Service on Render
+2. Connect the `socket-server` directory
+3. Configure the service:
+   - Build Command: `npm install`
+   - Start Command: `npm start`
 
-## Deploy on Vercel
+## Usage
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Create a room by entering your name
+2. Choose to join as a voter or spectator
+3. Share the room URL with team members
+4. Vote on items using the poker cards
+5. Reveal votes when everyone has voted
+6. View vote distribution and average
+7. Reset for the next round
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Tech Stack
+
+- Next.js 14
+- TypeScript
+- Socket.IO
+- TailwindCSS

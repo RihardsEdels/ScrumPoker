@@ -1,0 +1,15 @@
+{
+    "name": "scrum-poker-socket",
+    "version": "1.0.0",
+    "description": "Socket.IO server for Scrum Poker application",
+    "main": "server.js",
+    "scripts": {
+        "start": "node server.js"
+    },
+    "dependencies": {
+        "socket.io": "^4.7.2"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    }
+}

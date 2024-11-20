@@ -6,6 +6,11 @@ import { io, Socket } from "socket.io-client";
 
 const POKER_CARDS = ["1", "2", "3", "5", "8", "13", "21", "?"];
 
+// Get Socket.IO URL based on environment
+const SOCKET_URL =
+  process.env.NEXT_PUBLIC_SOCKET_URL ||
+  "https://scrum-poker-socket.onrender.com";
+
 type Vote = {
   userName: string;
   vote: string | null;
@@ -31,8 +36,10 @@ export default function RoomPage() {
   const [hasJoined, setHasJoined] = useState(false);
   const [inputUserName, setInputUserName] = useState("");
   const [isSpectator, setIsSpectator] = useState(false);
+  const [connectionError, setConnectionError] = useState(false);
 
   useEffect(() => {
+    // Check if user already has a name and role for this room
     const savedName = localStorage.getItem(`poker_user_${roomId}`);
     const savedRole = localStorage.getItem(`poker_role_${roomId}`);
     if (savedName) {
@@ -45,10 +52,21 @@ export default function RoomPage() {
   useEffect(() => {
     if (!hasJoined) return;
 
-    const newSocket = io("http://localhost:3001");
-    setSocket(newSocket);
+    const newSocket = io(SOCKET_URL, {
+      transports: ["websocket"],
+      timeout: 10000,
+      reconnection: true,
+      reconnectionAttempts: 5,
+    });
 
-    newSocket.emit("join-room", { roomId, userName, isSpectator });
+    newSocket.on("connect", () => {
+      setConnectionError(false);
+      newSocket.emit("join-room", { roomId, userName, isSpectator });
+    });
+
+    newSocket.on("connect_error", () => {
+      setConnectionError(true);
+    });
 
     newSocket.on("room-update", (updatedVotes: Vote[]) => {
       setVotes(updatedVotes);
@@ -68,6 +86,8 @@ export default function RoomPage() {
       setSelectedCard(null);
     });
 
+    setSocket(newSocket);
+
     return () => {
       newSocket.close();
     };
@@ -85,19 +105,23 @@ export default function RoomPage() {
   };
 
   const handleVote = (value: string) => {
-    if (!isSpectator) {
+    if (!isSpectator && !connectionError) {
       setSelectedCard(value);
       socket?.emit("vote", { roomId, vote: value });
     }
   };
 
   const handleReveal = () => {
-    socket?.emit("reveal-votes", roomId);
+    if (!connectionError) {
+      socket?.emit("reveal-votes", roomId);
+    }
   };
 
   const handleReset = () => {
-    setSelectedCard(null);
-    socket?.emit("reset-votes", roomId);
+    if (!connectionError) {
+      setSelectedCard(null);
+      socket?.emit("reset-votes", roomId);
+    }
   };
 
   const copyRoomLink = async () => {
@@ -114,6 +138,7 @@ export default function RoomPage() {
     const voteCount = new Map<string, number>();
     const numericVotes: number[] = [];
 
+    // Count votes from non-spectators only
     votes
       .filter((vote) => !vote.isSpectator)
       .forEach((vote) => {
@@ -125,6 +150,7 @@ export default function RoomPage() {
         }
       });
 
+    // Calculate percentages and create summary
     const totalVotes = votes.filter(
       (v) => !v.isSpectator && v.vote !== null
     ).length;
@@ -140,6 +166,7 @@ export default function RoomPage() {
         return Number(a.value) - Number(b.value);
       });
 
+    // Calculate average (excluding "?" votes)
     const average =
       numericVotes.length > 0
         ? Math.round(
@@ -207,6 +234,14 @@ export default function RoomPage() {
   return (
     <main className="min-h-screen p-8 bg-gradient-to-br from-blue-500 to-purple-600">
       <div className="max-w-6xl mx-auto">
+        {connectionError && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+            <strong className="font-bold">Connection Error! </strong>
+            <span className="block sm:inline">
+              Unable to connect to the server. Trying to reconnect...
+            </span>
+          </div>
+        )}
         <div className="bg-white rounded-lg shadow-xl p-6 mb-8">
           <div className="flex justify-between items-center mb-6">
             <div>
@@ -226,21 +261,23 @@ export default function RoomPage() {
             <div className="space-x-4">
               <button
                 onClick={handleReveal}
-                disabled={!allVoted || isSpectator}
+                disabled={!allVoted || isSpectator || connectionError}
                 className={`px-4 py-2 rounded transition-colors ${
-                  allVoted && !isSpectator
+                  allVoted && !isSpectator && !connectionError
                     ? "bg-green-500 text-white hover:bg-green-600"
                     : "bg-gray-300 text-gray-500 cursor-not-allowed"
                 }`}
                 title={
                   isSpectator
                     ? "Spectators cannot reveal votes"
+                    : connectionError
+                    ? "Connection error"
                     : allVoted
                     ? "Reveal all votes"
                     : "Waiting for all votes"
                 }
               >
-                Reveal Cards
+                Reveal Cards{" "}
                 {!allVoted &&
                   `(${participants.filter((v) => v.vote !== null).length}/${
                     participants.length
@@ -248,14 +285,18 @@ export default function RoomPage() {
               </button>
               <button
                 onClick={handleReset}
-                disabled={isSpectator}
+                disabled={isSpectator || connectionError}
                 className={`px-4 py-2 rounded transition-colors ${
-                  isSpectator
+                  isSpectator || connectionError
                     ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                     : "bg-blue-500 text-white hover:bg-blue-600"
                 }`}
                 title={
-                  isSpectator ? "Spectators cannot reset votes" : "Reset votes"
+                  isSpectator
+                    ? "Spectators cannot reset votes"
+                    : connectionError
+                    ? "Connection error"
+                    : "Reset votes"
                 }
               >
                 Reset
@@ -361,15 +402,17 @@ export default function RoomPage() {
               <button
                 key={card}
                 onClick={() => handleVote(card)}
-                disabled={isSpectator}
+                disabled={isSpectator || connectionError}
                 className={`aspect-[2/3] rounded-lg border-2 ${
                   selectedCard === card
                     ? "border-blue-500 bg-blue-50"
-                    : isSpectator
+                    : isSpectator || connectionError
                     ? "border-gray-200 bg-gray-50 cursor-not-allowed"
                     : "border-gray-200 hover:border-blue-300"
                 } flex items-center justify-center text-2xl font-bold transition-colors ${
-                  isSpectator ? "text-gray-400" : "text-gray-800"
+                  isSpectator || connectionError
+                    ? "text-gray-400"
+                    : "text-gray-800"
                 }`}
               >
                 {card}
